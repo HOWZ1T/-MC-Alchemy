@@ -12,6 +12,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -23,8 +24,8 @@ public class AlchemyListener implements Listener {
     @EventHandler
     public void onPlayerInteractAtEntity(PlayerInteractEvent event)
     {
-        // check if player is right clicking on a block
-        if (event.getAction() == Action.RIGHT_CLICK_BLOCK)
+        // check if player is right clicking on a block with their main hand
+        if (event.getAction() == Action.RIGHT_CLICK_BLOCK && event.getHand() == EquipmentSlot.HAND)
         {
             // get player & player's inventory
             Player p = event.getPlayer();
@@ -48,6 +49,7 @@ public class AlchemyListener implements Listener {
 
                 // handling alchemy effects
                 handleBootEnchantAlchemy(p, material, block);
+                handleDirtToGrassAlchemy(p, block);
             }
         }
     }
@@ -107,8 +109,6 @@ public class AlchemyListener implements Listener {
                 if (boot != null && itmFeather != null && entFeather != null)
                 {
                     boot.addEnchantment(Enchantment.PROTECTION_FALL, enchantLevel);
-                    // volume 0 - 1, pitch 0.5 - 2 where 1 = normal speed
-                    p.playSound(p.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 0.7f, 1.0f);
                     block.setType(Material.AIR); // destroying the block
 
                     // removing 1 feather
@@ -122,12 +122,78 @@ public class AlchemyListener implements Listener {
                     }
 
                     Location particleLoc = block.getLocation().clone().add(0.5, 0.5, 0.5);
-                    p.spawnParticle(Particle.SPELL, particleLoc, 6);
-                    p.spawnParticle(Particle.ENCHANTMENT_TABLE, particleLoc, 8);
-                    p.spawnParticle(Particle.REDSTONE, particleLoc, 7, 0, 0.2, 0, 16, new Particle.DustOptions(Color.RED, 1));
+                    transmuteEffect(p, particleLoc);
                     break;
                 }
             }
         }
+    }
+
+    /* The dirt to grass ritual requires: a dirt block and any seed dropped on top of any block and then right click
+       the block with the Alchemist's Staff */
+    private void handleDirtToGrassAlchemy(Player p, Block block)
+    {
+        ItemStack dirtBlock = null, seed = null;
+        Entity dirtEntity = null, seedEntity = null;
+
+        Collection<Entity> entities = p.getLocation().getWorld().getNearbyEntities(block.getLocation(), 1.5, 1.5, 1.5);
+        for (Entity entity : entities)
+        {
+            if (entity.getType() == EntityType.DROPPED_ITEM)
+            {
+                ItemStack itm = ((Item) entity).getItemStack();
+
+                switch(itm.getType())
+                {
+                    case DIRT:
+                        dirtEntity = entity;
+                        dirtBlock = itm;
+                        break;
+
+                    case WHEAT_SEEDS:
+                        seedEntity = entity;
+                        seed = itm;
+                        break;
+                }
+
+                if (dirtEntity != null && seedEntity != null) // checking if recipe is complete
+                {
+                    // removing dirt block and seed
+                    if(dirtBlock.getAmount() > 1)
+                    {
+                        dirtBlock.setAmount(dirtBlock.getAmount()-1);
+                    }
+                    else
+                    {
+                        dirtEntity.remove();
+                    }
+
+                    if(seed.getAmount() > 1)
+                    {
+                        seed.setAmount(seed.getAmount()-1);
+                    }
+                    else
+                    {
+                        seedEntity.remove();
+                    }
+
+                    // spawn grass block as a dropped item
+                    p.getWorld().dropItem(block.getLocation().clone().add(0.5, 1, 0.5), new ItemStack(Material.GRASS_BLOCK));
+                    transmuteEffect(p, block.getLocation().clone().add(0.5, 1, 0.5));
+                    break;
+                }
+            }
+        }
+    }
+
+    private void transmuteEffect(Player p, Location loc)
+    {
+        // volume 0 - 1, pitch 0.5 - 2 where 1 = normal speed
+        p.playSound(p.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 0.7f, 1.0f);
+
+        // particle effects
+        p.spawnParticle(Particle.SPELL, loc, 6);
+        p.spawnParticle(Particle.ENCHANTMENT_TABLE, loc, 8);
+        p.spawnParticle(Particle.REDSTONE, loc, 7, 0, 0.2, 0, 16, new Particle.DustOptions(Color.RED, 1));
     }
 }
