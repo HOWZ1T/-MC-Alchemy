@@ -52,8 +52,11 @@ public class AlchemyListener implements Listener {
         }
     }
 
+    /* The boot enchanting ritual requires: a boot and a feather dropped on top of a coal, iron, gold or diamond block
+       and then right click the block with the Alchemist's Staff */
     private void handleBootEnchantAlchemy(Player p, Material material, Block block)
     {
+        // checking if the block clicked can give a feather falling level
         int enchantLevel = -1;
         switch(material)
         {
@@ -75,6 +78,9 @@ public class AlchemyListener implements Listener {
         }
         if (enchantLevel == -1) {return;}
 
+        ItemStack boot = null;
+        ItemStack itmFeather = null;
+        Entity entFeather = null;
         // getting nearby entities
         Collection<Entity> entities = p.getLocation().getWorld().getNearbyEntities(block.getLocation(), 1.5, 1.5, 1.5);
         for (Entity entity : entities)
@@ -82,18 +88,43 @@ public class AlchemyListener implements Listener {
             if (entity.getType() == EntityType.DROPPED_ITEM)
             {
                 ItemStack itm = ((Item) entity).getItemStack();
-                if (itm.getType() == Material.LEATHER_BOOTS || itm.getType() == Material.IRON_BOOTS ||
-                        itm.getType() == Material.GOLDEN_BOOTS || itm.getType() == Material.DIAMOND_BOOTS ||
-                        itm.getType() == Material.CHAINMAIL_BOOTS)
+                switch (itm.getType())
                 {
-                    itm.addEnchantment(Enchantment.PROTECTION_FALL, enchantLevel);
+                    case LEATHER_BOOTS:
+                    case IRON_BOOTS:
+                    case GOLDEN_BOOTS:
+                    case DIAMOND_BOOTS:
+                    case CHAINMAIL_BOOTS:
+                        boot = itm;
+                        break;
+
+                    case FEATHER:
+                        itmFeather = itm;
+                        entFeather = entity;
+                        break;
+                }
+
+                if (boot != null && itmFeather != null && entFeather != null)
+                {
+                    boot.addEnchantment(Enchantment.PROTECTION_FALL, enchantLevel);
                     // volume 0 - 1, pitch 0.5 - 2 where 1 = normal speed
                     p.playSound(p.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 0.7f, 1.0f);
                     block.setType(Material.AIR); // destroying the block
+
+                    // removing 1 feather
+                    if (itmFeather.getAmount() > 1)
+                    {
+                        itmFeather.setAmount(itmFeather.getAmount()-1);
+                    }
+                    else
+                    {
+                        entFeather.remove(); // remove the feather entity if there is only one feather in the item stack
+                    }
+
                     Location particleLoc = block.getLocation().clone().add(0.5, 0.5, 0.5);
                     p.spawnParticle(Particle.SPELL, particleLoc, 6);
                     p.spawnParticle(Particle.ENCHANTMENT_TABLE, particleLoc, 8);
-                    p.spawnParticle(Particle.REDSTONE, particleLoc, 7, 0, 0.2, 0, 8, new Particle.DustOptions(Color.RED, 1));
+                    p.spawnParticle(Particle.REDSTONE, particleLoc, 7, 0, 0.2, 0, 16, new Particle.DustOptions(Color.RED, 1));
                     break;
                 }
             }
