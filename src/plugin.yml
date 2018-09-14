@@ -1,0 +1,5 @@
+name: Alchemy
+version: 0.0.1
+author: Dylan Randall
+main: com.dylan_randall.alchemy.Main
+api-version: 1.13
