@@ -1,10 +1,7 @@
 package com.dylan_randall.alchemy.listeners;
 
 import com.dylan_randall.alchemy.items.AlchemyStaff;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
+import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Entity;
@@ -96,7 +93,7 @@ public class AlchemyListener implements Listener {
                     Location particleLoc = block.getLocation().clone().add(0.5, 0.5, 0.5);
                     p.spawnParticle(Particle.SPELL, particleLoc, 6);
                     p.spawnParticle(Particle.ENCHANTMENT_TABLE, particleLoc, 8);
-                    p.spawnParticle(Particle.REDSTONE, particleLoc, 6);
+                    p.spawnParticle(Particle.REDSTONE, particleLoc, 7, 0, 0.2, 0, 8, new Particle.DustOptions(Color.RED, 1));
                     break;
                 }
             }
