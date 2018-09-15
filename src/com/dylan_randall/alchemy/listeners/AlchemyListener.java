@@ -1,6 +1,7 @@
 package com.dylan_randall.alchemy.listeners;
 
 import com.dylan_randall.alchemy.items.AlchemyStaff;
+import com.dylan_randall.alchemy.utils.Utils;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.enchantments.Enchantment;
@@ -15,9 +16,11 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.Collection;
+import java.util.Random;
 
 public class AlchemyListener implements Listener {
 
@@ -50,8 +53,20 @@ public class AlchemyListener implements Listener {
                 // handling alchemy effects
                 handleBootEnchantAlchemy(p, material, block);
                 handleDirtToGrassAlchemy(p, block);
+                handleBookEnchantAlchemy(p, block);
             }
         }
+    }
+
+    private void transmuteEffect(Player p, Location loc)
+    {
+        // volume 0 - 1, pitch 0.5 - 2 where 1 = normal speed
+        p.playSound(p.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 0.7f, 1.0f);
+
+        // particle effects
+        p.spawnParticle(Particle.SPELL, loc, 6);
+        p.spawnParticle(Particle.ENCHANTMENT_TABLE, loc, 8);
+        p.spawnParticle(Particle.REDSTONE, loc, 7, 0, 0.2, 0, 16, new Particle.DustOptions(Color.RED, 1));
     }
 
     /* The boot enchanting ritual requires: a boot and a feather dropped on top of a coal, iron, gold or diamond block
@@ -106,20 +121,11 @@ public class AlchemyListener implements Listener {
                         break;
                 }
 
-                if (boot != null && itmFeather != null && entFeather != null)
+                if (boot != null && itmFeather != null)
                 {
                     boot.addEnchantment(Enchantment.PROTECTION_FALL, enchantLevel);
                     block.setType(Material.AIR); // destroying the block
-
-                    // removing 1 feather
-                    if (itmFeather.getAmount() > 1)
-                    {
-                        itmFeather.setAmount(itmFeather.getAmount()-1);
-                    }
-                    else
-                    {
-                        entFeather.remove(); // remove the feather entity if there is only one feather in the item stack
-                    }
+                    Utils.removeItem(entFeather, itmFeather, 1); // destroying feather
 
                     Location particleLoc = block.getLocation().clone().add(0.5, 0.5, 0.5);
                     transmuteEffect(p, particleLoc);
@@ -159,26 +165,26 @@ public class AlchemyListener implements Listener {
                 if (dirtEntity != null && seedEntity != null) // checking if recipe is complete
                 {
                     // removing dirt block and seed
-                    if(dirtBlock.getAmount() > 1)
+                    int grassAmount;
+                    int dirtAmount = dirtBlock.getAmount();
+                    int seedAmount = seed.getAmount();
+
+                    // calculating ratio to produce the correct amount of grass blocks
+                    if (dirtAmount <= seedAmount)
                     {
-                        dirtBlock.setAmount(dirtBlock.getAmount()-1);
+                        grassAmount = dirtAmount;
                     }
                     else
                     {
-                        dirtEntity.remove();
+                        grassAmount = seedAmount;
                     }
 
-                    if(seed.getAmount() > 1)
-                    {
-                        seed.setAmount(seed.getAmount()-1);
-                    }
-                    else
-                    {
-                        seedEntity.remove();
-                    }
+                    Utils.removeItem(dirtEntity, dirtBlock, grassAmount);
+                    Utils.removeItem(seedEntity, seed, grassAmount);
 
                     // spawn grass block as a dropped item
-                    p.getWorld().dropItem(block.getLocation().clone().add(0.5, 1, 0.5), new ItemStack(Material.GRASS_BLOCK));
+                    p.getWorld().dropItem(block.getLocation().clone().add(0.5, 1, 0.5),
+                                            new ItemStack(Material.GRASS_BLOCK, grassAmount));
                     transmuteEffect(p, block.getLocation().clone().add(0.5, 1, 0.5));
                     break;
                 }
@@ -186,14 +192,166 @@ public class AlchemyListener implements Listener {
         }
     }
 
-    private void transmuteEffect(Player p, Location loc)
+    /* the book enchant ritual requires a book and a ingot of any of the following: coal, iron, gold, lapis-lazuli,
+       or diamond dropped on top of a block and then right click the block with the Alchemist's Staff */
+    private void handleBookEnchantAlchemy(Player p, Block block)
     {
-        // volume 0 - 1, pitch 0.5 - 2 where 1 = normal speed
-        p.playSound(p.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 0.7f, 1.0f);
+        ItemStack itmBook = null, itmOre = null;
+        Entity entBook = null, entOre = null;
 
-        // particle effects
-        p.spawnParticle(Particle.SPELL, loc, 6);
-        p.spawnParticle(Particle.ENCHANTMENT_TABLE, loc, 8);
-        p.spawnParticle(Particle.REDSTONE, loc, 7, 0, 0.2, 0, 16, new Particle.DustOptions(Color.RED, 1));
+        boolean bookHasEnchants = false; // does the book already have enchants ?
+
+        Collection<Entity> entities = p.getWorld().getNearbyEntities(block.getLocation(), 2, 2, 2);
+        for (Entity entity : entities)
+        {
+            if (entity.getType() == EntityType.DROPPED_ITEM)
+            {
+                // getting the entities, items and enchantment level (which is based on the ore item)
+                ItemStack itm = ((Item) entity).getItemStack();
+                int enchantLevel = -1;
+                switch(itm.getType())
+                {
+                    case COAL:
+                        enchantLevel = 1;
+                        itmOre = itm;
+                        entOre = entity;
+                        break;
+
+                    case IRON_INGOT:
+                        enchantLevel = 2;
+                        itmOre = itm;
+                        entOre = entity;
+                        break;
+
+                    case GOLD_INGOT:
+                        enchantLevel = 3;
+                        itmOre = itm;
+                        entOre = entity;
+                        break;
+
+                    case LAPIS_LAZULI:
+                        enchantLevel = 4;
+                        itmOre = itm;
+                        entOre = entity;
+                        break;
+
+                    case DIAMOND:
+                        enchantLevel = 5;
+                        itmOre = itm;
+                        entOre = entity;
+                        break;
+
+                    case BOOK:
+                        itmBook = itm;
+                        entBook = entity;
+                        break;
+
+                    case ENCHANTED_BOOK:
+                        itmBook = itm;
+                        entBook = entity;
+                        bookHasEnchants = true;
+                        break;
+                }
+
+                if (itmOre != null && itmBook != null && enchantLevel > -1)
+                {
+                    ItemStack enchantedBook = new ItemStack(Material.ENCHANTED_BOOK);
+                    Utils.removeItem(entOre, itmOre, 1);
+
+                    if (!bookHasEnchants)
+                    {
+                        Utils.removeItem(entBook, itmBook, 1);
+                    }
+                    else
+                    {
+                        enchantedBook = itmBook;
+                    }
+
+                    int clampedEnchantLevel = 1;
+                    Enchantment enchantment = Enchantment.DAMAGE_ALL;
+                    Enchantment prevEnchantment = enchantment;
+                    boolean enchanted = false;
+                    int maxAttempts = 50;
+
+                    // applying the enchant with this fault tolerant method to handle incompatible item type - enchants
+                    while (!enchanted && maxAttempts > 0)
+                    {
+                        try
+                        {
+                            switch(enchantLevel)
+                            {
+                                case 1:
+                                    while (enchantment == prevEnchantment)
+                                    {
+                                        enchantment = Utils.LEVEL_1_ENCHANTS[new Random().nextInt(Utils.LEVEL_1_ENCHANTS.length)];
+                                    }
+                                    break;
+
+                                case 2:
+                                    while (enchantment == prevEnchantment)
+                                    {
+                                        enchantment = Utils.LEVEL_2_ENCHANTS[new Random().nextInt(Utils.LEVEL_2_ENCHANTS.length)];
+                                    }
+                                    break;
+
+                                case 3:
+                                    while (enchantment == prevEnchantment)
+                                    {
+                                        enchantment = Utils.LEVEL_3_ENCHANTS[new Random().nextInt(Utils.LEVEL_3_ENCHANTS.length)];
+                                    }
+                                    break;
+
+                                case 4:
+                                    while (enchantment == prevEnchantment)
+                                    {
+                                        enchantment = Utils.LEVEL_4_ENCHANTS[new Random().nextInt(Utils.LEVEL_4_ENCHANTS.length)];
+                                    }
+                                    break;
+
+                                case 5:
+                                    while (enchantment == prevEnchantment)
+                                    {
+                                        enchantment = Utils.LEVEL_5_ENCHANTS[new Random().nextInt(Utils.LEVEL_5_ENCHANTS.length)];
+                                    }
+                                    break;
+                            }
+
+                            // clamping enchant level before applying it to avoid invalid enchantment level errors
+                            clampedEnchantLevel = Utils.clampEnchantLevel(enchantment, enchantLevel);
+
+                            // applying enchantment to the book
+                            EnchantmentStorageMeta meta = (EnchantmentStorageMeta) enchantedBook.getItemMeta();
+                            meta.addStoredEnchant(enchantment, clampedEnchantLevel, true);
+                            enchantedBook.setItemMeta(meta);
+                            enchanted = true;
+
+                            // if the book was previously not enchanted we need to drop a new enchanted book in it's place
+                            if (!bookHasEnchants)
+                            {
+                                // dropping the new enchanted book
+                                p.getWorld().dropItem(block.getLocation().clone().add(0.5, 1, 0.5), enchantedBook);
+                            }
+                        }
+                        catch (IllegalArgumentException e)
+                        {
+                            maxAttempts--;
+                            prevEnchantment = enchantment;
+                        }
+                    }
+
+                    if(!enchanted)
+                    {
+                        Utils.error(String.format("failed to enchant book!\n Details:\nPlayer: %s\nEnchantment: %s\n" +
+                                "Enchantment Level: %s\n", p.getDisplayName(), enchantment.getKey().getKey(),
+                                Integer.toString(clampedEnchantLevel)));
+                        return;
+                    }
+
+                    // applying transmutation effects
+                    transmuteEffect(p, block.getLocation().clone().add(0.5, 1.0, 0.5));
+                    break;
+                }
+            }
+        }
     }
 }
