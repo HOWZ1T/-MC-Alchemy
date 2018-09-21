@@ -1,6 +1,7 @@
 package com.dylan_randall.alchemy.utils;
 
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Entity;
 import org.bukkit.inventory.ItemStack;
@@ -201,5 +202,24 @@ public class Utils {
         {
             entity.remove();
         }
+    }
+
+    public static Location toSafeBlockLocation(Location loc) // converts a location to a safe block coordinate
+    {
+        Location newLoc = new Location(loc.getWorld(), Location.locToBlock(loc.getX()), Location.locToBlock(loc.getY()),
+                Location.locToBlock(loc.getZ()));
+
+        return newLoc;
+    }
+
+    // returns the result of a comparison on two locations x, y and z coordinates.
+    public static boolean areLocationCoordsEqual(Location locA, Location locB)
+    {
+        if (locA.getX() == locB.getX() && locA.getY() == locB.getY() && locA.getZ() == locB.getZ())
+        {
+            return true;
+        }
+
+        return false;
     }
 }

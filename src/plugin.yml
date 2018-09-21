@@ -3,3 +3,7 @@ version: 0.0.3
 author: Dylan Randall
 main: com.dylan_randall.alchemy.Main
 api-version: 1.13
+commands:
+  reset_compass:
+    description: Resets your compass to point towards the world's spawnpoint.
+    usage: /reset_compass

@@ -2,6 +2,7 @@ package com.dylan_randall.alchemy.managers;
 
 import com.dylan_randall.alchemy.items.AlchemyStaff;
 import com.dylan_randall.alchemy.interfaces.Item;
+import com.dylan_randall.alchemy.items.OreCompass;
 import com.dylan_randall.alchemy.utils.Utils;
 import org.bukkit.plugin.Plugin;
 
@@ -21,6 +22,7 @@ public class ItemManager {
     public void loadItems()
     {
         this.addItem(AlchemyStaff.key, new AlchemyStaff(this.plugin));
+        this.addItem(OreCompass.key, new OreCompass(this.plugin));
     }
 
     public void addItem(String key, Item item)

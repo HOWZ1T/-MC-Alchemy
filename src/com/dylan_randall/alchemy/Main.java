@@ -1,6 +1,8 @@
 package com.dylan_randall.alchemy;
 
+import com.dylan_randall.alchemy.commands.ResetCompass;
 import com.dylan_randall.alchemy.listeners.AlchemyListener;
+import com.dylan_randall.alchemy.listeners.OreCompassListener;
 import com.dylan_randall.alchemy.managers.ItemManager;
 import com.dylan_randall.alchemy.utils.Utils;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -17,6 +19,11 @@ public class Main extends JavaPlugin implements Listener {
         Utils.println("registering event listeners...");
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(new AlchemyListener(), this);
+        getServer().getPluginManager().registerEvents(new OreCompassListener(), this);
+
+        Utils.println("registering commands...");
+        this.getCommand("reset_compass").setExecutor(new ResetCompass());
+
         Utils.println("registering items...");
         itemManager = new ItemManager(this);
         itemManager.loadItems();
